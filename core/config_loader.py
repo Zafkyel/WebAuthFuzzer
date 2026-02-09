@@ -10,9 +10,16 @@ class ConfigLoader:
 
     def get_fofa_key(self):
         try:
-            with open(self.config_path, "r") as f:
+            if not os.path.exists(self.config_path):
+                print(f"[-] 错误: 找不到配置文件 {self.config_path}")
+                return "", ""  # 返回空字符串而不是 None
+
+            with open(self.config_path, "r", encoding="utf-8") as f:
                 conf = yaml.safe_load(f)
-                return conf['fofa']['email'], conf['fofa']['key']
+                if not conf or 'fofa' not in conf:
+                    print("[-] 错误: config.yaml 格式不正确")
+                    return "", ""
+                return conf['fofa'].get('email', ""), conf['fofa'].get('key', "")
         except Exception as e:
-            print(f"[-] 配置文件读取失败: {e}")
-            return None, None
+            print(f"[-] 配置文件读取异常: {e}")
+            return "", ""  # 确保始终返回两个值
