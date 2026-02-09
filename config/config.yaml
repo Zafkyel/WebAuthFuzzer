@@ -1,0 +1,9 @@
+# 基础配置
+fofa:
+  email: "your_email@example.com"
+  key: "your_fofa_api_key"
+
+scanner:
+  timeout: 10
+  threads: 50  # 异步并发数
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ..."

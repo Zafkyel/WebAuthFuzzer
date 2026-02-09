@@ -1,0 +1,8 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.idea/             # 排除 PyCharm 的项目配置文件
+data/results/* # 排除扫描结果，只保留文件夹
+.env               # 排除包含敏感 Key 的环境变量文件
+config/config.yaml # 如果包含你的私钥，建议排除或传示例文件
