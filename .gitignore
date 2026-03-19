@@ -2,10 +2,14 @@
 venv/
 __pycache__/
 .idea/
-config/config.yaml
-*.pyc
 data/results/*
+data/results/.DS_Store
 utils/__pycache__/
 core/__pycache__/
+reports
+
+
 .DS_Store
 .gitignore
+config/config.yaml
+*.pyc
