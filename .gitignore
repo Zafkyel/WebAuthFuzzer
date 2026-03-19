@@ -7,3 +7,5 @@ config/config.yaml
 data/results/*
 utils/__pycache__/
 core/__pycache__/
+.DS_Store
+.gitignore
