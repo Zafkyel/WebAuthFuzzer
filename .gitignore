@@ -4,7 +4,7 @@ utils/__pycache__/
 core/__pycache__/
 __pycache__/
 .idea/
-data/
+data/*
 reports
 
 
