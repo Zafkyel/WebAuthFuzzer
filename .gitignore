@@ -1,11 +1,10 @@
 .venv/
 venv/
-__pycache__/
-.idea/
-data/results/*
-data/results/.DS_Store
 utils/__pycache__/
 core/__pycache__/
+__pycache__/
+.idea/
+data/
 reports
 
 
