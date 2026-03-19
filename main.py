@@ -1,154 +1,140 @@
 import asyncio
 import sys
 import os
+import time
 
-# 路径补丁
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# 自动对齐项目根目录路径
+project_root = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(project_root)
 
-# 导入核心模块
-from core.config_loader import ConfigLoader
-from core.fofa_client import FofaClient
-from core.dispatcher import Dispatcher
-from core.fuzzer import Fuzzer
-from core.recon import Recon
+from core.config_loader import config_loader
+from core.collector import FOFACollector
+from core.dispatcher import AssetDispatcher
+from core.scanner import RecursiveScanner
+from core.bypasser import Bypasser
+from utils.request_client import request_client
+from utils.output_manager import OutputManager
 from utils.logger import logger
 
 
 async def run_pipeline():
-    # --- 0. 初始化变量 (彻底解决 UnboundLocalError) ---
-    p_name = "bypass_list.txt"  # 初始默认值
-    total_bypassed = 0
-    keyword = "unknown"
-    raw_assets = []
-    classified = {}
+    conf = config_loader.load_config()
+    fofa_conf = conf.get("fofa", {})
 
-    # 打印 Banner
-    print(r"""
-    __      __ZWJ_    _         _         _      ______                           
-    \ \    / / | |   / \       | |       | |    |  ____|                          
-     \ \  / /__| |__/ _ \ _   _| |_ ___  | |__  | |__ _   _ _________  ___ _ __ 
-      \ \/ / _ \ '_ \ / _ \ | | | __/ _ \ | '_ \ |  __| | | |_  /_  / / _ \ '__|
-       \  /  __/ |_) / ___ \ |_| | || (_) || | | || |  | |_| |/ / / / |  __/ |   
-        \/ \___|_.__/_/   \_\__,_|\__\___/ |_| |_||_|   \__,_/___/___(_)___|_|   
-    """)
-    print("--- WebAuthFuzzer 自动化测绘与绕过系统 v1.2 ---")
+    # 清屏 (可选，让界面更干净)
+    os.system('cls' if os.name == 'nt' else 'clear')
+    # 打印新 Banner
+    logger.banner()
 
-    # 1. 配置加载
-    loader = ConfigLoader()
-    email, key = loader.get_fofa_key()
-    if not email or not key:
-        print("[!] 错误: 无法获取 FOFA 凭据，请检查 config/config.yaml")
-        return
+    # --- 交互界面 ---
+    print("\n" + "═" * 50)
+    print("      WebAuthFuzzer 7.0 | Advanced Controller")
+    print("═" * 50)
 
-    # 2. 交互式模式选择
-    print("\n" + "=" * 30)
-    print(" [模式选择]")
-    print(" 1. 域名模式 (搜子域名资产)")
-    print(" 2. 公司模式 (搜组织/备案资产)")
-    print(" 3. 语法模式 (FOFA 原生语法)")
-    print("=" * 30)
+    mode = input("[?] 模式 (1.域名 2.公司 3.语法, 默认1): ").strip() or "1"
+    target = input("[?] 输入目标关键字: ").strip()
 
-    mode = input("[?] 请选择模式 (1/2/3): ").strip()
-    keyword = input("[?] 请输入搜索关键字: ").strip()
+    # 修复：确保数量可选且生效
+    size_input = input("[?] 采集数量 (默认50): ").strip()
+    fetch_size = int(size_input) if size_input.isdigit() else 50
 
-    if mode == "1":
-        query = f'domain="{keyword}"'
-    elif mode == "2":
-        query = f'org="{keyword}" || icp="{keyword}"'
-    elif mode == "3":
-        query = keyword
-    else:
-        query = f'domain="{keyword}"'
+    print("\n[!] 选择扫描速率挡位:")
+    print("  1. 极速 (并发100, 延迟0ms)")
+    print("  2. 均衡 (并发40,  延迟100ms)")
+    print("  3. 隐蔽 (并发10,  延迟500ms)")
+    speed_choice = input("[?] 选择档位 (默认2): ").strip() or "2"
 
-    size = input("[?] 抓取资产数量? (默认 50): ").strip()
-    size = int(size) if size.isdigit() else 50
-
-    # 3. 第一阶段：FOFA 资产采集
-    fofa = FofaClient(email, key)
-    print(f"\n[*] 正在检索 FOFA 资产，查询语句: {query}")
-    raw_assets = await fofa.fetch_assets(query, size=size)
-
-    if not raw_assets:
-        print("[-] 未发现相关资产，程序退出。")
-        return
-
-    # 4. 第二阶段：资产存活分流
-    dispatcher_instance = Dispatcher()
-    print(f"[*] 正在对 {len(raw_assets)} 个原始资产进行状态码分类...")
-    classified = await dispatcher_instance.dispatch(raw_assets)
-
-    if not classified:
-        print("[-] 资产探测失败。")
-        return
-
-    # 保存全量资产
-    logger.log_inventory(classified)
-
-    # 5. 第三阶段：分类处理
-
-    # (A) 处理 200 OK 资产
-    targets_200 = classified.get("200", [])
-    if targets_200:
-        print(f"\n[*] 发现 {len(targets_200)} 个活跃资产，正在提取画像...")
-        recon = Recon()
-        # 限制并发 Recon，防止 PyCharm 卡死
-        recon_tasks = [recon.get_fingerprint(url) for url in targets_200]
-        recon_results = await asyncio.gather(*recon_tasks)
-
-        for info in recon_results:
-            print(f"  [+] {info['url']} | 标题: {info['title']} | 服务: {info['server']}")
-
-        logger.log_fingerprints(recon_results)
-
-    # (B) 处理 403 Forbidden 资产 - 绕过测试
-    targets_403 = classified.get("403", [])
-    if targets_403:
-        print(f"\n[!] 发现 {len(targets_403)} 个权限受限资产")
-        print("-" * 30)
-        print(" 1. 默认执行 (data/payloads/bypass_list.txt)")
-        print(" 2. 指定字典执行 (需提前放入 data/payloads/)")
-        print("-" * 30)
-
-        choice = input("[?] 请选择模式 (1/2): ").strip()
-        if choice == "2":
-            input_name = input("[?] 请输入文件名 (例如 custom.txt): ").strip()
-            if input_name:
-                p_name = input_name
-
-                # 实例化 Fuzzer 并注入选择的 p_name
-        fuzzer = Fuzzer(payload_name=p_name)
-        print(f"[*] 启动 Bypass 引擎，当前字典: {p_name}")
-
-        for url in targets_403:
-            # 执行异步探测并获取该目标的绕过成功数
-            success_count = await fuzzer.bypass_test(url)
-            total_bypassed += success_count
-    else:
-        print("\n[*] 本次未发现 403 资产，跳过 Bypass 环节。")
-
-    # 6. 第四阶段：收尾总结
-    summary_data = {
-        "target": keyword,
-        "results": {
-            "total": len(raw_assets),
-            "200": len(classified.get("200", [])),
-            "403": len(targets_403),
-            "bypassed": total_bypassed
-        }
+    # 速率参数映射
+    speed_map = {
+        "1": (100, 0),
+        "2": (40, 0.1),
+        "3": (10, 0.5)
     }
-    logger.log_summary(summary_data)
+    concurrency, delay = speed_map.get(speed_choice, (40, 0.1))
+
+    # 初始化组件
+    await request_client.init_session()
+    request_client.base_delay = delay  # 注入延迟
+    om = OutputManager(target)
+
+    try:
+        # --- 1. 资产采集 ---
+        collector = FOFACollector(fofa_conf.get("email"), fofa_conf.get("key"))
+        query = collector.build_query(mode, target)
+        # 关键修复：显式传递 fetch_size
+        raw_assets = await collector.fetch(query, size=fetch_size)
+
+        if not raw_assets:
+            logger.warning("未搜集到数据。")
+            return
+
+        # --- 2. 资产分流 ---
+        dispatcher = AssetDispatcher(concurrency=concurrency)
+        classified = await dispatcher.run(raw_assets)
+
+        om.save("alive", classified["200"])
+        om.save("others", classified["3xx"] + classified["restricted"])
+
+        # --- 3. 递归扫描 (含 visited 修复) ---
+        if classified["200"]:
+            logger.info(f"[*] 启动递归探测 (并发:{concurrency})...")
+            scanner = RecursiveScanner(om, config_loader, concurrency=concurrency)
+            await scanner.run(classified["200"])
+
+        # --- 4. Bypass 绕过 ---
+        if classified["restricted"]:
+            bypasser = Bypasser(om, config_loader, concurrency=concurrency // 2)
+            await bypasser.run(classified["restricted"])
+
+        logger.success(f"任务结束！结果路径: {om.output_path}")
+
+        # --- 5. 生成总结报告 (Report 增强版) ---
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        report_name = f"Report_{target}_{om.timestamp}.txt"
+        report_path = os.path.join(config_loader.base_path, "reports", report_name)
+        os.makedirs(os.path.dirname(report_path), exist_ok=True)
+
+        # 统计各文件行数
+        stats = {}
+        for key, filename in om.file_map.items():
+            f_path = os.path.join(om.output_path, filename)
+            if os.path.exists(f_path):
+                with open(f_path, 'r') as f:
+                    stats[key] = len(f.readlines())
+            else:
+                stats[key] = 0
+
+        with open(report_path, "w", encoding="utf-8") as f:
+            f.write(f"╔{'═' * 50}╗\n")
+            f.write(f"║ WebAuthFuzzer 自动化扫描报告 {' ' * (50 - 26)}║\n")
+            f.write(f"╠{'═' * 50}╣\n")
+            f.write(f"║ 目标关键字: {target:<37}║\n")
+            f.write(f"║ 扫描时间: {timestamp:<39}║\n")
+            f.write(f"║ 速率模式: {speed_choice} (并发:{concurrency} 延迟:{delay}s){' ' * (15)}║\n")
+            f.write(f"╠{'═' * 50}╣\n")
+            f.write(f"║ [1] 初始存活资产: {stats.get('alive', 0):<30}║\n")
+            f.write(f"║ [2] 递归发现目录: {stats.get('recursive', 0):<30}║\n")
+            f.write(f"║ [3] 3xx/4xx 资产: {stats.get('others', 0):<31}║\n")
+            f.write(f"║ [4] Fuzz 成功参数: {stats.get('fuzz', 0):<30}║\n")
+            f.write(f"║ [5] Bypass 成功数: {stats.get('bypass', 0):<30}║\n")
+            f.write(f"╚{'═' * 50}╝\n")
+            f.write(f"\n[!] 结果详情请访问: {om.output_path}\n")
+
+        logger.success(f"任务圆满完成！报告已归档: {report_path}")
+
+    except Exception as e:
+        logger.error(f"运行时发生错误: {e}")
+    finally:
+        await request_client.close()
 
 
 if __name__ == "__main__":
     try:
-        # 注意：在某些系统环境，asyncio.run 可能会导致事件循环报错
-        # 如果报错，可以改为 loop = asyncio.get_event_loop(); loop.run_until_complete(...)
+        # 针对不同系统的事件循环策略
+        if sys.platform == 'win32':
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         asyncio.run(run_pipeline())
     except KeyboardInterrupt:
-        print("\n[-] 用户手动终止扫描。")
+        logger.warning("\n[!] 用户中断操作，正在强制退出...")
     except Exception as e:
-        # 调试用：打印详细错误堆栈
-        import traceback
-
-        traceback.print_exc()
-        print(f"\n[!] 系统运行异常: {e}")
+        logger.error(f"程序启动失败: {e}")

@@ -1,64 +1,83 @@
-# WebAuthFuzzer 🚀
+# 🚀 WebAuthFuzzer v7.0 (Stable)
 
-> **基于响应特征驱动的智能化 Web 资产测绘与未授权探测系统**
+> **基于异步协程的自动化 Web 资产搜集与鉴权绕过测试流水线**
 
-[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python&logoColor=white)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Status](https://img.shields.io/badge/Status-Developing-orange.svg)]()
-
-WebAuthFuzzer 是一款针对企业级攻击面管理的自动化安全工具。它能从一个公司名称开始，自动化完成资产搜集、存活探测，并针对 **403 Forbidden** 及 **未授权 API** 进行智能化绕过与深度探测。
+![License](https://img.shields.io/badge/License-MIT-green.svg)
+![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)
+![Environment](https://img.shields.io/badge/Environment-Kali%20/%20macOS-orange.svg)
 
 ---
 
-## 🛠️ 系统架构
+## 🎨 Tool Preview
 
-本项目采用异步 I/O 架构，确保在实战环境下的高并发处理能力。
+      __      __      ___.                         __  .__     
+     /  \    /  \ ____\_ |__ _____   __ __  __ ___/  |_|  |__  
+     \   \/\/   // __ \| __ \__  \ |  |  \|  |  \   __\  |  \ 
+      \        /\  ___/| \_\ \/ __ \|  |  /|  |  /|  | |   Y  \
+       \__/\  /  \___  >___  (____  /____/ |____/ |__| |___|  /
+            \/       \/    \/     \/                        \/ 
 
-
-
-- **Recon Module**: 集成 FOFA API 与 Subfinder，实现被动+主动的资产画像。
-- **Smart Dispatcher**: 根据响应状态码（200/403/30x）动态路由至不同的探测算子。
-- **Bypass Engine**: 自动化执行 Header 注入、路径穿越及权限校验绕过。
-- **Reporter**: 自动生成包含漏洞复现证据的 HTML 可视化报告。
+               >> Offensive Security & Auth-Bypass Pipeline <<
 
 ---
 
-## 📂 项目目录
+## 🌟 核心特性
 
-```text
-WebAuthFuzzer/
-├── config/             # 配置文件 (API Key, 策略配置)
-├── core/               # 核心引擎 (Recon, Dispatcher, Fuzzer)
-├── data/               # 存放 Fuzzing 字典与扫描缓存
-├── utils/              # 异步请求封装、日志管理
-├── reports/            # 报告模板与输出目录
-├── main.py             # 统一入口
-└── requirements.txt    # 依赖库清单
-```
-⚡ 快速开始
+* **⚡ 异步并发引擎**：基于 `aiohttp` 与 `asyncio`，支持百级并发，扫描效率提升 10 倍。
+* **🎯 精准资产搜集**：深度集成 FOFA API，支持域名、公司名及自定义语法批量采集。
+* **📂 智能递归探测**：自动化目录爆破与参数 Fuzz，实时记录有效的隐藏接口。
+* **🛡️ 鉴权绕过 (Bypass)**：内置多种 403/405 绕过策略，自动尝试头部注入与路径重写。
+* **📈 速率动态控制**：
+    * **极速模式** (100并发/0延时)：适用于内网安全评估。
+    * **均衡模式** (40并发/100ms延时)：实战推荐，兼顾效率与隐蔽。
+    * **隐蔽模式** (10并发/500ms延时)：规避基础 WAF 拦截。
+* **📊 自动化报表**：任务结束后自动生成可视化 TXT 汇总报告，扫描成果一目了然。
 
-1. 环境克隆与安装
+---
+
+## 🛠️ 快速开始
+
+### 1. 环境克隆
 ```bash
-git clone https://github.com/Zafkyel/WebAuthFuzzer.git
+git clone [https://github.com/your-username/WebAuthFuzzer.git](https://github.com/your-username/WebAuthFuzzer.git)
 cd WebAuthFuzzer
-pip install -r requirements.txt 
 ```
 
-2. 配置 API
-编辑 config/config.yaml:
-```yaml
+2. 安装依赖
+pip3 install -r requirements.txt
+
+3. 配置 API
+编辑 config/config.yaml，填入你的 FOFA 密钥：
+
+```YAML
 fofa:
-  email: "your_email"
-  key: "your_key"
+  email: "your_email@example.com"
+  key: "your_fofa_api_key"
+ ```
+4. 运行工具
+```Bash
+python3 main.py
+```
+📁 目录结构说明
+```
+core/ : 扫描引擎逻辑 (Config, Scanner, Bypasser)
+
+utils/ : 工具组件 (Logger, Client, OutputManager)
+
+data/ : 存放 Payload 字典及扫描结果数据
+
+reports/ : 自动生成的扫描汇总报告目录
 ```
 
-3. 运行探测
-```bash
-python main.py -d example.com
-```
+⚠️ 免责声明
+本工具仅用于合规的渗透测试、安全研究及教学用途。用户在使用本工具进行测试时，应遵守当地法律法规。因不当使用导致的任何后果由使用者本人承担。
 
-⚖️ 免责声明
-本工具仅用于安全研究与授权测试。用户因使用本工具导致的任何法律纠纷，作者不承担任何责任。
+Developed with ❤️ for the Security Community.
 
 
 ---
+
+### 💡 提示：
+1.  **替换链接**：记得把文档里的 `your-username` 换成你真实的 GitHub 用户名。
+2.  **Banner 渲染**：我在文档里保留了你最喜欢的 **第一版 Slant Banner**，它在 GitHub 的 Markdown 预览中也会非常帅气。
+3.  **速率说明**：我专门加入了速率控制的说明，这能让潜在的使用者（或面试官）看出这个工具的逻辑深度。

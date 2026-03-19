@@ -1,39 +1,52 @@
 import asyncio
-from utils.request_client import RequestClient
+from utils.logger import logger
+from utils.request_client import request_client
 
 
-class Dispatcher:
-    def __init__(self):
-        self.client = RequestClient()
+class AssetDispatcher:
+    """
+    三路分流模块 (核心功能 1)
+    功能：判定存活，并将 200, 3xx, 403 分流隔离
+    """
+
+    def __init__(self, concurrency=50):
+        self.concurrency = concurrency
         self.results = {
-            "200": [],
-            "301/302": [],
-            "403": [],
-            "404": [],
-            "others": []
+            "200": [],  # 存活
+            "3xx": [],  # 跳转
+            "restricted": [],  # 403/405
+            "dead": []  # 无法访问
         }
 
-    async def dispatch(self, url_list: list):
-        """核心分发方法"""
-        print(f"[*] 正在对 {len(url_list)} 个资产进行并发探测...")
-        tasks = [self.client.check_status(url) for url in url_list]
-        responses = await asyncio.gather(*tasks)
+    async def probe(self, url, sem):
+        async with sem:
+            # allow_redirects=False 极其重要，否则抓不到原始 3xx
+            resp, _ = await request_client.fetch(url, timeout=10, allow_redirects=False)
 
-        for res in responses:
-            if not res: continue
+            if not resp:
+                self.results["dead"].append(url)
+                return
 
-            status = str(res.get('status'))
-            url = res.get('url')
-
-            if status == "200":
+            status = resp.status
+            if status == 200:
                 self.results["200"].append(url)
-            elif status in ["301", "302"]:
-                self.results["301/302"].append(url)
-            elif status == "403":
-                self.results["403"].append(url)
-            elif status == "404":
-                self.results["404"].append(url)
+                logger.success(f"[200 OK] {url}")
+            elif 300 <= status < 400:
+                loc = resp.headers.get("Location", "Unknown")
+                self.results["3xx"].append(f"{url} -> {loc}")
+                logger.info(f"[3xx RED] {url}")
+            elif status in [403, 405]:
+                self.results["restricted"].append(url)
+                logger.warning(f"[403/405] {url}")
             else:
-                self.results["others"].append(url)
+                self.results["dead"].append(url)
+
+    async def run(self, url_list):
+        if not url_list: return self.results
+
+        logger.info(f"开始存活探测，资产总数: {len(url_list)}")
+        sem = asyncio.Semaphore(self.concurrency)
+        tasks = [asyncio.create_task(self.probe(url, sem)) for url in url_list]
+        await asyncio.gather(*tasks)
 
         return self.results
