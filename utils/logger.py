@@ -48,8 +48,7 @@ class Logger:
             \/       \/    \/     \/                        \/ 
 {pu}               >> Offensive Security & Auth-Bypass Pipeline <<
 {ed}{bl}
-    [ 版本 ] : v7.0.26 (Stable)
-    [ 环境 ] : {ye} anyone {bl}
+    [ 版本 ] : v1.0.26 (Stable)
     [ 模块 ] : FOFA / DirScan / ParamFuzz / 403Bypass
 {ed}
         """.format(

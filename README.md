@@ -1,4 +1,4 @@
-# 🚀 WebAuthFuzzer v7.0 (Stable)
+# 🚀 WebAuthFuzzer v1.0.26 (Stable)
 
 > **基于异步协程的自动化 Web 资产搜集与鉴权绕过测试流水线**
 
@@ -73,11 +73,3 @@ reports/ : 自动生成的扫描汇总报告目录
 本工具仅用于合规的渗透测试、安全研究及教学用途。用户在使用本工具进行测试时，应遵守当地法律法规。因不当使用导致的任何后果由使用者本人承担。
 
 Developed with ❤️ for the Security Community.
-
-
----
-
-### 💡 提示：
-1.  **替换链接**：记得把文档里的 `your-username` 换成你真实的 GitHub 用户名。
-2.  **Banner 渲染**：我在文档里保留了你最喜欢的 **第一版 Slant Banner**，它在 GitHub 的 Markdown 预览中也会非常帅气。
-3.  **速率说明**：我专门加入了速率控制的说明，这能让潜在的使用者（或面试官）看出这个工具的逻辑深度。
